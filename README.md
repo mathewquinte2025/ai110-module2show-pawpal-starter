@@ -57,19 +57,35 @@ Today's Schedule
 
 ## 🧪 Testing PawPal+
 
+Run the full test suite from the project folder:
+
 ```bash
-# Run the full test suite:
-pytest
-
-# Run with coverage:
-pytest --cov
+python -m pytest
 ```
 
-Sample test output:
+The 14 tests in `tests/test_pawpal.py` check:
+
+- **Basic tasks and pets:** marking a task complete changes its status, and adding a task increases the pet's task count.
+- **Sorting:** tasks come back in chronological order, and earlier dates come first even when a later date has an earlier time.
+- **Filtering:** tasks can be filtered by pet, by completion status, or both. A filter with no matches returns an empty list.
+- **Recurring tasks:** completing a daily task creates a new one for the next day (including across a month boundary, keeping the same time, priority and description). Weekly tasks repeat 7 days later, one-time tasks do not repeat, and completing the same task twice does not create a duplicate.
+- **Conflict detection:** two unfinished tasks at the same date and time give a warning that names both tasks and pets. Completed tasks are ignored, and pets with no tasks do not cause errors.
+
+Test output:
 
 ```
-# Paste your pytest output here
+============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-9.0.2, pluggy-1.6.0
+collected 14 items
+
+tests\test_pawpal.py ..............                                      [100%]
+
+============================= 14 passed in 0.08s ==============================
 ```
+
+**Confidence level: ★★★★☆ (4/5)**
+
+The main scheduling behaviors (sorting, filtering, recurrence and conflict detection) are tested for both normal use and edge cases, and all 14 tests pass. It is not 5 stars because the tests only cover `pawpal_system.py`. The Streamlit UI in `app.py` is checked by hand, not by automated tests. Conflict detection also only catches tasks with the exact same start time, so tasks that overlap (for example, a 45-minute task at 09:30 and another task at 10:00) are not flagged.
 
 ## 📐 Smarter Scheduling
 
@@ -77,10 +93,14 @@ Sample test output:
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+
+| Sorting | Scheduler.sort_by_time() | Returns all tasks from all pets, ordered by due date and then by their "HH:MM" time (earliest first). It uses sorted() with a lambda key. |
+
+| Filtering | Scheduler.filter_tasks(pet_name=None, completed=None) | Returns the time-sorted tasks, optionally only for one pet (pet_name="Buddy"), only done or not-done tasks (completed=True / False), or both together. |
+
+| Conflict detection | Scheduler.find_conflicts() | Looks for unfinished tasks scheduled at the exact same date and time (for the same pet or different pets). It returns readable warning messages that name each task and pet, and an empty list if there are no conflicts. It never raises an error. |
+
+| Recurring tasks | Task.next_occurrence() and Scheduler.mark_task_complete(task) | When a "daily" or "weekly" task is completed, a new copy is added to the same pet with a due date 1 day or 7 days later (using timedelta). "once" tasks do not repeat. Completing the same task a second time does nothing, so it never creates duplicates. |
 
 ## 📸 Demo Walkthrough
 

@@ -129,3 +129,51 @@ def test_no_conflicts_and_empty_pets_do_not_crash():
     buddy.add_task(Task("Walk", "08:00", 30, due_date=TODAY))
     buddy.add_task(Task("Grooming", "11:00", 30, due_date=TODAY))
     assert scheduler.find_conflicts() == []
+
+
+# --- Phase 5 tests (edge cases) ----------------------------------------------
+
+def test_sort_puts_earlier_dates_first_even_with_later_times():
+    scheduler, buddy, max_the_cat = make_scheduler()
+    buddy.add_task(Task("Tomorrow Walk", "07:00", 30, due_date=date(2026, 11, 5)))
+    max_the_cat.add_task(Task("Tonight Playtime", "18:00", 20, due_date=TODAY))
+
+    names = [task.description for task in scheduler.sort_by_time()]
+
+    assert names == ["Tonight Playtime", "Tomorrow Walk"]
+
+
+def test_filter_with_no_matches_returns_empty_list():
+    scheduler, buddy, _ = make_scheduler()
+    buddy.add_task(Task("Walk", "08:00", 30, due_date=TODAY))
+
+    assert scheduler.filter_tasks(pet_name="Nobody") == []
+    assert scheduler.filter_tasks(completed=True) == []
+
+
+def test_completed_tasks_do_not_cause_conflicts():
+    scheduler, buddy, max_the_cat = make_scheduler()
+    walk = Task("Morning Walk", "08:00", 30, due_date=TODAY)
+    buddy.add_task(walk)
+    max_the_cat.add_task(Task("Breakfast", "08:00", 10, due_date=TODAY))
+
+    assert len(scheduler.find_conflicts()) == 1  # clash while both are pending
+
+    walk.mark_complete()
+
+    assert scheduler.find_conflicts() == []  # finished task no longer clashes
+
+
+def test_daily_recurrence_crosses_month_and_keeps_details():
+    scheduler, buddy, _ = make_scheduler()
+    meds = Task("Medicine", "20:00", 5, priority="high", frequency="daily",
+                due_date=date(2026, 11, 30))
+    buddy.add_task(meds)
+
+    new_task = scheduler.mark_task_complete(meds)
+
+    assert new_task.due_date == date(2026, 12, 1)
+    assert new_task.description == "Medicine"
+    assert new_task.time == "20:00"
+    assert new_task.priority == "high"
+    assert new_task.frequency == "daily"
