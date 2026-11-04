@@ -2,17 +2,27 @@
 
 ## 1. System Design
 
+1. Users should be able to add pets and enter basic information about them.
+2. Users should be able to create pet care tasks, such as feeding, walking, and medication.
+3. Users should be able to view a daily schedule that organizes tasks based on priority and available time.
+
 **a. Initial design**
 
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
+
+My initial UML design included four main classes: Owner, Pet, Task, and Scheduler.
+
+The **Owner** class represents the pet owner and stores their name, available time, preferences, and pets. The **Pet** class represents each pet and stores its name, species, age, and assigned tasks. The **Task** class represents individual pet care activities and stores details such as description, time, duration, priority, frequency, and completion status. Finally, the **Scheduler** class manages the owner's tasks and organizes them by time.
+
+The classes are connected so that an Owner can have multiple Pets, each Pet can have multiple Tasks, and the Scheduler can retrieve and organize tasks belonging to the Owner.
 
 **b. Design changes**
 
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
 
----
+--- After reviewing my initial design with an AI coding assistant, I made one change to improve the relationship between Task and Pet. I added a pet_name attribute to the Task class so each task can be associated with the pet it belongs to. This will make it easier for the Scheduler to display tasks with the correct pet name and allow tasks to be filtered by pet. The rest of the original design was kept because it already matched the UML diagram.
 
 ## 2. Scheduling Logic and Tradeoffs
 
