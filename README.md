@@ -22,6 +22,18 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## ✨ Features
+
+- **Pet management:** add pets with a name, species, and age in the Streamlit app. Duplicate pet names are rejected.
+- **Task management:** schedule care tasks for a pet with a description, date, time, duration, priority, and frequency.
+- **Sorting by date and time:** `Scheduler.sort_by_time()` lists every task from every pet in order of due date, then "HH:MM" time, earliest first.
+- **Filtering:** `Scheduler.filter_tasks()` shows tasks for one pet, only finished or unfinished tasks, or both, and keeps them in time order.
+- **Daily and weekly recurring tasks:** completing a `daily` task adds a new copy for the next day, and completing a `weekly` task adds one 7 days later, for the same pet.
+- **One-time tasks:** tasks with frequency `once` are simply marked done and do not repeat.
+- **Duplicate-completion protection:** completing a task that is already done does nothing, so a recurring task never creates two copies of its next occurrence.
+- **Conflict detection:** `Scheduler.find_conflicts()` warns when two or more unfinished tasks are scheduled at the exact same date and time. Each warning names the tasks, their pets, and the time. It does not check whether task durations overlap.
+- **Command-line demo:** `main.py` runs through all of these features with sample pets and prints the results.
+
 ## Getting started
 
 ### Setup
@@ -44,15 +56,15 @@ pip install -r requirements.txt
 
 ## 🖥️ Sample Output
 
-Paste a sample of your app's CLI or Streamlit output here so a reader can see what a generated plan looks like:
+The first part of the output from `python main.py` (the full output is in the Demo Walkthrough below):
 
 ```
 Today's Schedule
+07:30 - Litter Cleaning (Max)
 08:00 - Morning Walk (Buddy)
 09:30 - Breakfast (Max)
 11:00 - Grooming (Buddy)
 18:00 - Evening Playtime (Max)
-
 ```
 
 ## 🧪 Testing PawPal+
@@ -89,27 +101,93 @@ The main scheduling behaviors (sorting, filtering, recurrence and conflict detec
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
-
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-
 | Sorting | Scheduler.sort_by_time() | Returns all tasks from all pets, ordered by due date and then by their "HH:MM" time (earliest first). It uses sorted() with a lambda key. |
-
 | Filtering | Scheduler.filter_tasks(pet_name=None, completed=None) | Returns the time-sorted tasks, optionally only for one pet (pet_name="Buddy"), only done or not-done tasks (completed=True / False), or both together. |
-
 | Conflict detection | Scheduler.find_conflicts() | Looks for unfinished tasks scheduled at the exact same date and time (for the same pet or different pets). It returns readable warning messages that name each task and pet, and an empty list if there are no conflicts. It never raises an error. |
-
 | Recurring tasks | Task.next_occurrence() and Scheduler.mark_task_complete(task) | When a "daily" or "weekly" task is completed, a new copy is added to the same pet with a due date 1 day or 7 days later (using timedelta). "once" tasks do not repeat. Completing the same task a second time does nothing, so it never creates duplicates. |
 
-## 📸 Demo Walkthrough
+## 🚀 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+### Running the app
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+```bash
+streamlit run app.py
+```
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+### What you can do in the UI
+
+| Section | What it does |
+|---------|--------------|
+| **Owner** | Set the owner's name and the minutes available today. |
+| **Add a Pet** | Add a pet with a name, species, and age. Empty or duplicate names show an error. |
+| **Add a Care Task** | Pick a pet and enter a description, date, time, duration, priority, and frequency (`once`, `daily`, or `weekly`). |
+| **Mark a Task Complete** | Choose an unfinished task and mark it done. Recurring tasks automatically schedule their next occurrence. |
+| **Your Pets** | One table per pet showing its tasks in date and time order. |
+| **Schedule** | Conflict warnings, filters for pet and status, and a table of every matching task in chronological order. |
+
+### Example workflow
+
+1. In **Add a Pet**, enter `Buddy`, choose `Dog`, and click **Add pet**. A green success message confirms it. Add a second pet, `Max` the cat.
+2. In **Add a Care Task**, choose `Buddy`, enter `Morning Walk` at `08:00`, set frequency to `daily`, and click **Add task**.
+3. Add `Breakfast` for `Max` at `09:30`, then `Vet Visit` for `Buddy` also at `09:30` on the same date.
+4. Scroll to **Schedule**. The tasks appear earliest first, no matter what order they were added in.
+5. A yellow warning appears: *Vet Visit (Buddy) and Breakfast (Max) are scheduled at the same time (09:30 on ...)*. Completing one of the two tasks clears the warning, because finished tasks are not counted.
+6. In **Mark a Task Complete**, choose `Morning Walk` and click **Mark complete**. The success message shows that the next walk is scheduled for tomorrow at 08:00.
+7. Use the **Show pet** and **Show status** filters to see, for example, only Buddy's unfinished tasks or only completed tasks.
+
+### How the scheduling features work
+
+- **Sorting:** every schedule table uses `Scheduler.sort_by_time()` or `Scheduler.filter_tasks()`, which order tasks by due date and then by time.
+- **Filtering:** the **Show pet** and **Show status** dropdowns are passed straight to `Scheduler.filter_tasks(pet_name, completed)`. "All" means no filter.
+- **Recurring tasks:** `Scheduler.mark_task_complete()` marks the task done and calls `Task.next_occurrence()`. A `daily` task gets a copy one day later and a `weekly` task gets one seven days later. A `once` task is not repeated. Completing an already-finished task does nothing, so no duplicates are created.
+- **Conflict warnings:** `Scheduler.find_conflicts()` groups unfinished tasks by their exact date and time. Any slot with two or more tasks becomes an `st.warning()` message. If there are no conflicts, an `st.success()` message says so. Completed tasks are not counted, and tasks that only overlap in duration (for example, 09:30 for 45 minutes and 10:00) are not flagged.
+
+### CLI demo output
+
+Running `python main.py` sets up Buddy and Max with five tasks and demonstrates sorting, filtering, recurrence, and conflict detection. Actual output (dates are based on the day it is run):
+
+```
+Today's Schedule
+07:30 - Litter Cleaning (Max)
+08:00 - Morning Walk (Buddy)
+09:30 - Breakfast (Max)
+11:00 - Grooming (Buddy)
+18:00 - Evening Playtime (Max)
+
+Tasks in the order they were added (unsorted):
+  2026-11-04 11:00 - Grooming (Buddy) [to do]
+  2026-11-04 08:00 - Morning Walk (Buddy) [to do]
+  2026-11-04 09:30 - Breakfast (Max) [to do]
+  2026-11-04 18:00 - Evening Playtime (Max) [to do]
+  2026-11-04 07:30 - Litter Cleaning (Max) [to do]
+
+Sorted by time:
+  2026-11-04 07:30 - Litter Cleaning (Max) [to do]
+  2026-11-04 08:00 - Morning Walk (Buddy) [to do]
+  2026-11-04 09:30 - Breakfast (Max) [to do]
+  2026-11-04 11:00 - Grooming (Buddy) [to do]
+  2026-11-04 18:00 - Evening Playtime (Max) [to do]
+
+Filtered: Buddy's tasks only
+  2026-11-04 08:00 - Morning Walk (Buddy) [to do]
+  2026-11-04 11:00 - Grooming (Buddy) [to do]
+
+Recurring tasks:
+  Completed 'Morning Walk' -> next one on 2026-11-05
+  Completed 'Litter Cleaning' -> next one on 2026-11-11
+  Completed 'Grooming' -> no repeat
+  Completing 'Morning Walk' a second time -> new task created? False
+
+Filtered: completed tasks
+  2026-11-04 07:30 - Litter Cleaning (Max) [done]
+  2026-11-04 08:00 - Morning Walk (Buddy) [done]
+  2026-11-04 11:00 - Grooming (Buddy) [done]
+
+Filtered: Buddy's unfinished tasks
+  2026-11-05 08:00 - Morning Walk (Buddy) [to do]
+
+Conflict check:
+  Warning: Vet Visit (Buddy) and Breakfast (Max) are scheduled at the same time (09:30 on 2026-11-04).
+```

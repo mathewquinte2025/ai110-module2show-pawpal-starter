@@ -1,0 +1,51 @@
+classDiagram
+    class Owner {
+        +String name
+        +int available_time
+        +dict preferences
+        +List~Pet~ pets
+        +add_pet(pet: Pet) None
+        +get_all_tasks() List~Task~
+    }
+
+    class Pet {
+        +String name
+        +String species
+        +int age
+        +List~Task~ tasks
+        +add_task(task: Task) None
+        +remove_task(task: Task) None
+        +get_tasks() List~Task~
+    }
+
+    class Task {
+        +String description
+        +String time
+        +int duration
+        +String priority
+        +String frequency
+        +bool completed
+        +String pet_name
+        +String due_date
+        +mark_complete() None
+        +next_occurrence() Task
+        +reschedule(new_time: String) None
+    }
+
+    class Scheduler {
+        +Owner owner
+        +get_all_tasks() List~Task~
+        +sort_by_time() List~Task~
+        +filter_tasks(pet_name, completed) List~Task~
+        +mark_task_complete(task: Task) Task
+        +find_conflicts() List~String~
+    }
+
+    Owner "1" --> "0..*" Pet : owns
+    Pet "1" --> "0..*" Task : has
+    Scheduler "1" --> "1" Owner : retrieves tasks from
+    Task ..> Task : next_occurrence() creates copy
+    Scheduler ..> Pet : adds next recurring task to
+
+    note for Task "pet_name is set by Pet.add_task().\nfrequency is once, daily, or weekly.\nnext_occurrence() returns None for once."
+    note for Scheduler "find_conflicts() warns when 2+ unfinished tasks\nshare the exact same due_date and time."

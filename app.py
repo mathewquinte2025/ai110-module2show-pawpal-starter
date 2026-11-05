@@ -52,6 +52,7 @@ else:
     with st.form("add_task_form", clear_on_submit=True):
         selected_pet_name = st.selectbox("Pet", [pet.name for pet in owner.pets])
         description = st.text_input("Task description", placeholder="Morning walk")
+        task_date = st.date_input("Date")
         task_time = st.time_input("Time")
         duration = st.number_input("Duration (minutes)", min_value=1, max_value=480, value=20)
         priority = st.selectbox("Priority", ["low", "medium", "high"], index=1)
@@ -68,11 +69,64 @@ else:
                 duration=duration,
                 priority=priority,
                 frequency=frequency,
+                due_date=task_date,
             )
             # Find the chosen pet, then let Pet.add_task() attach the task to it.
             chosen_pet = next(pet for pet in owner.pets if pet.name == selected_pet_name)
             chosen_pet.add_task(task)
-            st.success(f"Added '{task.description}' at {task.time} for {chosen_pet.name}.")
+            st.success(
+                f"Added '{task.description}' on {task.due_date} at {task.time} for {chosen_pet.name}."
+            )
+
+# --- Mark a task complete --------------------------------------------------
+scheduler = Scheduler(owner)
+
+st.header("Mark a Task Complete")
+pending_tasks = scheduler.filter_tasks(completed=False)
+if not pending_tasks:
+    st.info("There are no unfinished tasks to complete.")
+else:
+    with st.form("complete_task_form"):
+        task_index = st.selectbox(
+            "Unfinished task",
+            range(len(pending_tasks)),
+            format_func=lambda i: (
+                f"{pending_tasks[i].due_date} {pending_tasks[i].time} - "
+                f"{pending_tasks[i].description} ({pending_tasks[i].pet_name})"
+            ),
+        )
+        complete_clicked = st.form_submit_button("Mark complete")
+
+    if complete_clicked:
+        done_task = pending_tasks[task_index]
+        # The Scheduler marks the task done and, for daily/weekly tasks,
+        # adds the next occurrence to the same pet.
+        next_task = scheduler.mark_task_complete(done_task)
+        if next_task:
+            st.success(
+                f"Completed '{done_task.description}'. The next one is scheduled "
+                f"for {next_task.due_date} at {next_task.time}."
+            )
+        else:
+            st.success(f"Completed '{done_task.description}'.")
+
+
+def task_rows(tasks):
+    """Turn a list of tasks into table rows for st.table()."""
+    return [
+        {
+            "Date": str(task.due_date),
+            "Time": task.time,
+            "Task": task.description,
+            "Pet": task.pet_name,
+            "Duration (min)": task.duration,
+            "Priority": task.priority,
+            "Frequency": task.frequency,
+            "Status": "Done" if task.completed else "To do",
+        }
+        for task in tasks
+    ]
+
 
 # --- Pets and their tasks ---------------------------------------------------
 st.header("Your Pets")
@@ -80,39 +134,39 @@ if not owner.pets:
     st.write("No pets yet.")
 for pet in owner.pets:
     st.subheader(f"{pet.name} ({pet.species}, age {pet.age})")
-    pet_tasks = pet.get_tasks()
+    # filter_tasks() returns this pet's tasks already sorted by date and time.
+    pet_tasks = scheduler.filter_tasks(pet_name=pet.name)
     if not pet_tasks:
         st.caption("No tasks yet.")
     else:
-        st.table(
-            [
-                {
-                    "Time": task.time,
-                    "Task": task.description,
-                    "Duration (min)": task.duration,
-                    "Priority": task.priority,
-                    "Frequency": task.frequency,
-                }
-                for task in pet_tasks
-            ]
-        )
+        st.table(task_rows(pet_tasks))
 
-# --- Daily plan -------------------------------------------------------------
-st.header("Today's Schedule")
-scheduler = Scheduler(owner)
-sorted_tasks = scheduler.sort_by_time()
-if not sorted_tasks:
+# --- Schedule ---------------------------------------------------------------
+st.header("Schedule")
+
+# Conflict warnings: two or more unfinished tasks at the exact same date and time.
+conflicts = scheduler.find_conflicts()
+if conflicts:
+    for warning in conflicts:
+        st.warning(warning)
+elif scheduler.get_all_tasks():
+    st.success("No scheduling conflicts. No two unfinished tasks share the same date and time.")
+
+# Filters use Scheduler.filter_tasks(), which also sorts by date and time.
+col1, col2 = st.columns(2)
+with col1:
+    pet_choice = st.selectbox("Show pet", ["All pets"] + [pet.name for pet in owner.pets])
+with col2:
+    status_choice = st.selectbox("Show status", ["All", "To do", "Done"])
+
+pet_filter = None if pet_choice == "All pets" else pet_choice
+status_filter = {"All": None, "To do": False, "Done": True}[status_choice]
+shown_tasks = scheduler.filter_tasks(pet_name=pet_filter, completed=status_filter)
+
+if not scheduler.get_all_tasks():
     st.info("No tasks scheduled yet.")
+elif not shown_tasks:
+    st.info("No tasks match these filters.")
 else:
-    st.table(
-        [
-            {
-                "Time": task.time,
-                "Task": task.description,
-                "Pet": task.pet_name,
-                "Duration (min)": task.duration,
-                "Priority": task.priority,
-            }
-            for task in sorted_tasks
-        ]
-    )
+    st.caption(f"Showing {len(shown_tasks)} task(s), earliest first.")
+    st.table(task_rows(shown_tasks))
